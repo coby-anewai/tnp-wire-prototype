@@ -7,7 +7,7 @@ This is a single self-contained `index.html` file using fictional mock data and 
 ## How to run
 
 - Open `index.html` directly in a browser, or
-- Visit the live GitHub Pages link: `<PLACEHOLDER — add GitHub Pages URL here>`
+- Visit the live GitHub Pages link: https://coby-anewai.github.io/tnp-wire-prototype/
 
 ## Not yet in this prototype
 
