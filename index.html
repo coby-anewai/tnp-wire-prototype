@@ -306,8 +306,22 @@ let openPop = null;          // storyId whose popover is open
 const $ = s => document.querySelector(s);
 const foldersOf = id => storyFolders[id] || (storyFolders[id] = new Set());
 
-function savedCount(){ let n=new Set(bookmarks); Object.values(storyFolders).forEach(()=>{}); return bookmarks.size; }
 function folderCount(fid){ return Object.keys(storyFolders).filter(sid=>storyFolders[sid].has(fid)).length; }
+function findFolderByName(name){
+  const norm = name.trim().toLowerCase();
+  return folders.find(f=>f.name.trim().toLowerCase()===norm);
+}
+// Creates a folder only if no existing folder matches (case-insensitive); otherwise
+// reuses the existing one. Returns the resulting folder id, or null for a blank name.
+function getOrCreateFolder(name){
+  const v = name.trim();
+  if(!v) return null;
+  const existing = findFolderByName(v);
+  if(existing) return existing.id;
+  const f = {id:"f"+(folderSeq++), name:v};
+  folders.push(f);
+  return f.id;
+}
 
 function visibleStories(){
   const q = searchTerm.trim().toLowerCase();
@@ -346,9 +360,22 @@ function promptNewFolderInline(){
   wrap.innerHTML=`<input class="newfolder-in" placeholder="Folder name…" />`;
   btn.replaceWith(wrap);
   const inp=wrap.querySelector("input"); inp.focus();
-  const commit=()=>{ const v=inp.value.trim(); if(v){ folders.push({id:"f"+(folderSeq++),name:v}); } render(); };
-  inp.addEventListener("keydown",e=>{ if(e.key==="Enter") commit(); if(e.key==="Escape") render(); });
-  inp.addEventListener("blur",commit);
+  let settled=false;
+  const onBlur=()=>finish(true);
+  const finish=(shouldCommit)=>{
+    if(settled) return; settled=true;
+    inp.removeEventListener("blur",onBlur);
+    if(shouldCommit){
+      const fid=getOrCreateFolder(inp.value);
+      if(fid) activeView=fid;
+    }
+    render();
+  };
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter") finish(true);
+    else if(e.key==="Escape") finish(false);
+  });
+  inp.addEventListener("blur",onBlur);
 }
 
 function render(){
@@ -455,14 +482,17 @@ function bindPop(){
   }));
   document.querySelectorAll("[data-newfolderbtn]").forEach(btn=>btn.addEventListener("click",e=>{
     e.stopPropagation(); const sid=btn.dataset.newfolderbtn;
-    const inp=document.querySelector(`[data-newfolder="${sid}"]`); const v=inp.value.trim();
-    if(v){ const f={id:"f"+(folderSeq++),name:v}; folders.push(f); foldersOf(sid).add(f.id); }
+    const inp=document.querySelector(`[data-newfolder="${sid}"]`);
+    const fid=getOrCreateFolder(inp.value);
+    if(fid) foldersOf(sid).add(fid);
     render();
   }));
   document.querySelectorAll("[data-newfolder]").forEach(inp=>inp.addEventListener("keydown",e=>{
     e.stopPropagation();
-    if(e.key==="Enter"){ const sid=inp.dataset.newfolder; const v=inp.value.trim();
-      if(v){ const f={id:"f"+(folderSeq++),name:v}; folders.push(f); foldersOf(sid).add(f.id);} render(); }
+    if(e.key==="Enter"){ const sid=inp.dataset.newfolder;
+      const fid=getOrCreateFolder(inp.value);
+      if(fid) foldersOf(sid).add(fid);
+      render(); }
   }));
 }
 
